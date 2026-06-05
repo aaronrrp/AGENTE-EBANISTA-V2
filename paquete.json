@@ -1,0 +1,11 @@
+{
+  "name": "agente-ebanista-v2",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "openai": "^4.52.0",
+    "dotenv": "^16.4.5"
+  }
+}
