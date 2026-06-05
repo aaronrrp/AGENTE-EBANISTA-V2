@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ebanista Pro V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; }
+        .wood-accent { background-color: #3d2b1f; }
+        .gold-accent { color: #d4a373; }
+        .bg-gold { background-color: #d4a373; }
+        .chat-container::-webkit-scrollbar { width: 4px; }
+        .chat-container::-webkit-scrollbar-thumb { background: #d4a373; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="wood-accent text-white p-4 shadow-xl flex justify-between items-center z-10">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-white/10 rounded-lg">
+                <i class="fas fa-couch gold-accent text-xl"></i>
+            </div>
+            <h1 class="text-xl font-extrabold tracking-tighter">EBANISTA<span class="gold-accent italic">PRO</span></h1>
+        </div>
+        <div class="flex space-x-4 text-xs font-bold uppercase tracking-widest">
+            <span class="text-green-400"><i class="fas fa-circle text-[8px] animate-pulse"></i> V2 Online</span>
+        </div>
+    </nav>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Panel Izquierdo: CHAT -->
+        <section class="w-full md:w-5/12 lg:w-4/12 flex flex-col bg-white shadow-2xl z-0">
+            <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 chat-container">
+                <div class="bg-stone-100 p-4 rounded-2xl border-l-4 border-amber-600 shadow-sm">
+                    <p class="text-xs font-bold text-amber-800 mb-1">ASISTENTE TÉCNICO</p>
+                    <p class="text-sm text-stone-700 font-medium">¿Qué proyecto tienes hoy? Dime el mueble y las medidas externas (Alto, Ancho, Fondo).</p>
+                </div>
+            </div>
+
+            <div class="p-4 border-t bg-stone-50">
+                <form id="chat-form" class="relative">
+                    <input type="text" id="user-input" 
+                        class="w-full bg-white border-2 border-stone-200 rounded-2xl py-4 pl-5 pr-14 focus:outline-none focus:border-amber-600 transition-all shadow-inner"
+                        placeholder="Ej: Closet 180x240cm en MDF 18mm...">
+                    <button type="submit" class="absolute right-2 top-2 bottom-2 bg-gold text-white px-5 rounded-xl hover:scale-95 transition-transform shadow-lg">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Panel Derecho: VISUALIZACIÓN (Desktop) -->
+        <section class="hidden md:flex flex-1 flex-col p-8 bg-[#f8f7f4] overflow-y-auto">
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="flex justify-between items-end border-b-2 border-stone-200 pb-4 mb-6">
+                    <div>
+                        <h2 class="text-3xl font-black text-stone-800 uppercase tracking-tighter">Despiece y Detalles</h2>
+                        <p class="text-stone-500 font-medium">Resultados calculados por IA</p>
+                    </div>
+                    <button onclick="window.print()" class="bg-white text-stone-800 border-2 border-stone-300 px-4 py-2 rounded-xl font-bold hover:bg-stone-800 hover:text-white transition-all shadow-sm flex items-center">
+                        <i class="fas fa-print mr-2"></i> IMPRIMIR
+                    </button>
+                </div>
+
+                <div id="output-visual" class="space-y-6">
+                    <!-- Placeholder si no hay datos -->
+                    <div class="bg-white p-20 rounded-3xl border-4 border-dashed border-stone-200 flex flex-col items-center text-stone-300">
+                        <i class="fas fa-ruler-combined text-7xl mb-4 opacity-20"></i>
+                        <p class="font-bold uppercase tracking-widest text-center">Esperando especificaciones<br>del proyecto...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('user-input');
+        const chatBox = document.getElementById('chat-box');
+        const outputVisual = document.getElementById('output-visual');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            addMessage('user', msg);
+            input.value = '';
+
+            const loadingId = addMessage('bot', '<i class="fas fa-cog fa-spin mr-2"></i> Procesando despiece técnico...');
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                
+                updateMessage(loadingId, data.reply);
+                updateVisualPanel(data.reply);
+
+            } catch (err) {
+                updateMessage(loadingId, "Error al conectar con el taller. Verifica tu conexión.");
+            }
+        });
+
+        function addMessage(role, text) {
+            const id = Date.now();
+            const div = document.createElement('div');
+            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`;
+            div.innerHTML = `
+                <div id="${id}" class="${role === 'user' ? 'bg-gold text-white rounded-br-none' : 'bg-stone-800 text-stone-100 rounded-bl-none'} p-4 rounded-2xl shadow-md max-w-[90%] text-sm leading-relaxed">
+                    ${text.replace(/\n/g, '<br>')}
+                </div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return id;
+        }
+
+        function updateMessage(id, text) {
+            const el = document.getElementById(id);
+            if(el) el.innerHTML = text.replace(/\n/g, '<br>');
+        }
+
+        function updateVisualPanel(text) {
+            // Si la respuesta contiene una tabla Markdown, la resaltamos en el panel derecho
+            if(text.includes('|')) {
+                outputVisual.innerHTML = `
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-stone-200 animate-slideUp">
+                        <div class="flex items-center mb-4 text-amber-700">
+                            <i class="fas fa-list-check mr-2"></i>
+                            <h3 class="font-bold uppercase tracking-wider">Hoja de Corte Generada</h3>
+                        </div>
+                        <div class="prose prose-stone max-w-none text-sm overflow-x-auto">
+                            ${formatMarkdownTable(text)}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function formatMarkdownTable(text) {
+            // Una limpieza simple para mostrar tablas más bonitas
+            return text.split('\n').filter(line => line.includes('|'))
+                .map(line => `<div class="grid grid-cols-1 border-b py-1">${line}</div>`).join('');
+        }
+    </script>
+</body>
+</html>
